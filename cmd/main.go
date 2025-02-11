@@ -14,19 +14,22 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	dsn := ("host=" + os.Getenv("DB_HOST") +
-		" port=" + os.Getenv("DB_PORT") +
-		" user=" + os.Getenv("DB_USER") +
-		" password=" + os.Getenv("DB_PASSWORD") +
-		" dbname=" + os.Getenv("DB_NAME") +
-		" sslmode=disable")
+	dsn := "host=" + os.Getenv("DB_HOST") +
+	" port=" + os.Getenv("DB_PORT") +
+	" user=" + os.Getenv("DB_USER") +
+	" password=" + os.Getenv("DB_PASSWORD") +
+	" dbname=" + os.Getenv("DB_NAME") +
+	" sslmode=disable"
+
 	
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil{
-		log.Fatal("Failed to connect db")
+		log.Fatalf("Failed to connect db: %v", err)
 	}
 
-	db.AutoMigrate(&product.Product{})
+	if err := db.AutoMigrate(&product.Product{}); err != nil{
+		log.Fatalf("Failed automigrate: %v", err)
+	}
 
 	productRepo := &product.ProductRepo{DB: db}
 	productService := &product.ProductService{Repo: productRepo}
@@ -35,16 +38,14 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/products", productHandler.GetAllProducts)
-	r.POST("/products/search", productHandler.SearchProductByName)
+	r.POST("/products/filter", productHandler.FilterProduct)
 
 	adminRoutes := r.Group("/admin")
 	adminRoutes.Use(product.AdminMiddleware())
 	adminRoutes.POST("/products", productHandler.CreateProduct)
 
 	port := os.Getenv("SERVER_PORT")
-	if port == ""{
-		port = "8080"
+	if err := r.Run(":" + port); err != nil{
+		log.Fatalf("Cannot to run the server: %v", err)
 	}
-
-	r.Run(":" + port)
 }

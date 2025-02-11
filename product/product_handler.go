@@ -25,35 +25,32 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context){
 	c.JSON(200, products)
 }
 
-func(h *ProductHandler) SearchProductByName (c *gin.Context){
-	var req struct{
+func (h *ProductHandler) FilterProduct (c *gin.Context){
+	var filter struct{
 		Name string `json:"name"`
+		Type string `json:"type"`
+		MinPrice float64 `json:"min_price"`
+		MaxPrice float64 `json:"max_price"`
+		MinRating float64 `json:"min_rating"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil{
+	if err := c.ShouldBindJSON(&filter); err != nil{
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid JSON",
+			"error": "Invalid input",
 		})
 		return
 	}
 
-	if req.Name == ""{
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Name is required",
-		})
-		return
-	}
-
-	product, err := h.Service.SearchProductByName(req.Name)
+	products, err := h.Service.FilterProducts(filter.Name, filter.Type, filter.MinPrice, filter.MaxPrice, filter.MinRating)
 
 	if err != nil{
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Error searching",
+			"error": "Filter error!",
 		})
 		return
 	}
 
-	c.JSON(200, product)
+	c.JSON(http.StatusOK, products)
 }
 
 func AdminMiddleware() gin.HandlerFunc{
